@@ -4,8 +4,9 @@
   "description": "A Simple Video Application Using WebRTC",
   "main": "index.js",
   "scripts": {
-    "start": "ts-node src/index.ts",
-    "dev": "nodemon --watch 'src/**/*.ts' --exec 'ts-node' src/index.ts"
+    "start": "node dist/index.js",
+    "dev": "nodemon --watch 'src/**/*.ts' --exec 'ts-node' src/index.ts",
+    "build": "tsc -p ."
   },
   "repository": {
     "type": "git",

@@ -10,6 +10,8 @@
     "experimentalDecorators": true,
     "emitDecoratorMetadata": true,
     "resolveJsonModule": true,
-    "baseUrl": "."    
+    "baseUrl": ".",
+    "outDir": "./dist",
+    "rootDir": "./src"
   }
 }
