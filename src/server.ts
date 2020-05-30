@@ -84,7 +84,8 @@ export class Server {
         })
     }
 
-    public listen(callback: (port: number) => void): void {
-        this.httpServer.listen(this.DEFAULT_PORT, () => callback(this.DEFAULT_PORT))
+    public listen(callback: (port: string|number) => void): void {
+        const _port = process.env.PORT || this.DEFAULT_PORT
+        this.httpServer.listen(_port, () => callback(_port))
     }
 }
