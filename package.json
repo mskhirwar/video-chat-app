@@ -1,0 +1,31 @@
+{
+  "name": "video-chat-app",
+  "version": "1.0.0",
+  "description": "A Simple Video Application Using WebRTC",
+  "main": "index.js",
+  "scripts": {
+    "start": "ts-node src/inde.ts",
+    "dev": "nodemon --watch 'src/**/*.ts' --exec 'ts-node' src/index.ts"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/mskhirwar/video-chat-app.git"
+  },
+  "author": "Manmohan Singh",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/mskhirwar/video-chat-app/issues"
+  },
+  "homepage": "https://github.com/mskhirwar/video-chat-app#readme",
+  "devDependencies": {
+    "@types/express": "^4.17.6",
+    "@types/socket.io": "^2.1.8",
+    "nodemon": "^2.0.4",
+    "ts-node": "^8.10.2",
+    "typescript": "^3.9.3"
+  },
+  "dependencies": {
+    "express": "^4.17.1",
+    "socket.io": "^2.3.0"
+  }
+}
