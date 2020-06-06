@@ -8,7 +8,7 @@ export class Server {
     private app: Application
     private io: SocketIOServer
 
-    private activeSockets: string[] = []
+    private clients: string[] = []
 
     private readonly DEFAULT_PORT = 5000
 
@@ -38,48 +38,35 @@ export class Server {
 
     private handleSocketConnection(): void {
         this.io.on('connection', socket => {
-            console.log(`Socket connected.`)
+            console.log(`user is connected`)
 
-            const existingSocket = this.activeSockets.find(
-                existingSocket => existingSocket === socket.id
+            const existingClient = this.clients.find(
+                existingClient => existingClient === socket.id
             )
         
-            if (!existingSocket) {
-                this.activeSockets.push(socket.id)
-        
-                socket.emit('update-user-list', {
-                    users: this.activeSockets.filter(
-                        existingSocket => existingSocket !== socket.id
-                    )
-                })
-        
-                socket.broadcast.emit('update-user-list', {
-                    users: [socket.id]
+            if (!existingClient) {
+                this.clients.push(socket.id)
+                socket.broadcast.emit('message', {
+                    client: socket.id,
+                    text: 'I am connected!'
                 })
             }
 
-            socket.on('call-user', data => {
-                socket.to(data.to).emit('call-made', {
-                    offer: data.offer,
-                    socket: socket.id
-                })
-            })
-
-            socket.on('make-answer', data => {
-                socket.to(data.to).emit('answer-made', {
-                    socket: socket.id,
-                    answer: data.answer
-                })
+            socket.on('message', event => {
+                console.log(`user sent a message`, event)
+                socket.broadcast.emit('message', event)
             })
 
             socket.on('disconnect', () => {
-                this.activeSockets = this.activeSockets.filter(
-                    existingSocket => existingSocket !== socket.id
-                )
-            
-                socket.broadcast.emit('remove-user', {
-                    socketId: socket.id
-                })
+                console.log(`user is disconnected`)
+
+                if (!existingClient) {
+                    // this.clients.push(socket.id)
+                    socket.broadcast.emit('message', {
+                        client: socket.id,
+                        text: 'I am disconnected!'
+                    })
+                }
             })
         })
     }

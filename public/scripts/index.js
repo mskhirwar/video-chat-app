@@ -1,123 +1,61 @@
-const {RTCPeerConnection, RTCSessionDescription} = window
+(function () {
+    "use strict";
 
+    let socket
 
-let isAlreadyCalling = false
-
-const peerConnection = new RTCPeerConnection();
-
-async function callUser(socketId) {
-    console.log(`socketId: ${socketId}`)
-    const offer = await peerConnection.createOffer()
-    await peerConnection.setLocalDescription(new RTCSessionDescription(offer))
-
-    socket.emit('call-user', {
-        offer,
-        to: socketId
-    })
-}
-
-function unselectUsersFromList() {
-    const alreadySelectorUser = document.querySelectorAll('.active-user.active-user--selected')
-
-    alreadySelectorUser.forEach(el => {
-        el.setAttribute('class', 'active-user')
-    })
-}
-
-function createUserItemContainer(socketId) {
-    const userContainerEl = document.createElement('div')
-    const userNameEl = document.createElement('p')
-
-    userContainerEl.setAttribute('class', 'active-user')
-    userContainerEl.setAttribute('id', socketId)
-    userNameEl.setAttribute('class', 'username')
-    userNameEl.innerHTML = `Socket: ${socketId}`
-
-    userContainerEl.appendChild(userNameEl)
-
-    userContainerEl.addEventListener('click', () => {
-        unselectUsersFromList()
-        userContainerEl.setAttribute('class', 'active-user active-user--selected')
-        const talkingWithInfo = document.getElementById('talking-with-info')
-        talkingWithInfo.innerHTML = `Talking with: 'Socket: ${socketId}'`
-        callUser(socketId)
-    })
-
-    return userContainerEl
-}
-
-function updateUserList(socketIds) {
-    const activeUserContainer = document.getElementById('active-user-container')
-
-    socketIds.forEach( socketId => {
-        const alreadyExistingUser = document.getElementById(socketId)
-
-        if (!alreadyExistingUser) {
-            const userContainerEl = createUserItemContainer(socketId)
-
-            activeUserContainer.appendChild(userContainerEl)
-        }
-    })
-}
-
-const socket = io.connect('/')
-
-socket.on('update-user-list', ({users}) => {
-    updateUserList(users)
-})
-
-socket.on('remove-user', ({socketId}) => {
-    const elToRemove = document.getElementById(socketId)
-
-    if (elToRemove) {
-        elToRemove.remove()
+    const enableAndDisableButtons = (connected) => {
+        document.getElementById('start').disabled = connected
+        document.getElementById('say-hello').disabled = !connected
+        document.getElementById('close').disabled = !connected
     }
-})
 
-socket.on('call-made', async data => {
-    await peerConnection.setRemoteDescription(
-        new RTCSessionDescription(data.offer)
-    )
-
-    const answer = await peerConnection.createAnswer()
-    await peerConnection.setLocalDescription(new RTCSessionDescription(answer))
-
-    socket.emit('make-answer', {
-        answer,
-        to: data.socket
-    })
-})
-
-socket.on('answer-made', async data => {
-    await peerConnection.setRemoteDescription(
-        new RTCSessionDescription(data.answer)
-    )
-
-    if (!isAlreadyCalling) {
-        callUser(data.socket)
-        isAlreadyCalling = true
+    const addMessageToConsole = message => {
+        const messageDiv = document.createElement('div')
+        messageDiv.textContent = message
+        document.getElementById('console').appendChild(messageDiv)
     }
-})
 
-peerConnection.ontrack = function({streams: [stream]}) {
-    const remoteVideo = document.getElementById('remote-video')
+    const setupWebSocketConnection = () => {
+        socket = io.connect('/')
 
-    if (remoteVideo) {
-        remoteVideo.srcObject = stream
+        socket.on('connect', () => {
+            const message = 'You are now connected!'
+            console.log(message)
+            addMessageToConsole(message)
+            enableAndDisableButtons(true)
+        })
+
+        socket.on('message', data => {
+            addMessageToConsole(`Client ${data.client} says: ${data.text}`)
+        })
     }
-}
 
+    const closeConnection = () => {
+        socket.disconnect()
+        const message = 'You are disconnected!'
+        console.log(message)
+        addMessageToConsole(message)
+        enableAndDisableButtons(false)
+    }
 
-navigator.mediaDevices.getUserMedia({video: true, audio: true})
-    .then((stream) => {
-        const localVideo = document.getElementById('local-video')
-            
-        if (localVideo) {
-            localVideo.srcObject = stream
+    document.addEventListener('click', async event => {
+        if (event.target.id === 'startVideoBtn') {
+            const stream = await window.navigator.mediaDevices.getUserMedia({ video: true, audio: true })
+            const video = document.getElementById('video')
+            video.srcObject = stream
+            video.play()
         }
 
-        stream.getTracks().forEach(track => peerConnection.addTrack(track, stream))
-    },
-    error => {
-        console.warn(error.message)
-    })
+        if (event.target.id === 'start') {
+            setupWebSocketConnection();
+        } else if (event.target.id === 'say-hello') {
+            socket.emit('message', {
+                client: socket.id,
+                text: 'Hello!'
+            })
+        } else if (event.target.id === 'close') {
+            closeConnection()
+        }
+        
+    });
+})();  
