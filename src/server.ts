@@ -10,6 +10,8 @@ export class Server {
 
   private clients: string[] = []
 
+  private peersByCode = {}
+
   private readonly DEFAULT_PORT = 5000
 
   constructor() {
@@ -38,8 +40,9 @@ export class Server {
 
   private handleSocketConnection(): void {
     this.io.on('connection', (socket) => {
-      console.log('user is connected')
+      console.log('user is connected', socket.id)
 
+      const socketId = socket.id
       const existingClient = this.clients.find(
         (existingClient) => existingClient === socket.id
       )
@@ -54,7 +57,24 @@ export class Server {
 
       socket.on('message', (event) => {
         console.log('user sent a message', event)
-        socket.broadcast.emit('message', event)
+
+        const { code } = event
+
+        const isUserAlreadyPaired =
+          this.peersByCode[code] &&
+          this.peersByCode[code].find((peer) => peer.id === socketId)
+
+        if (!this.peersByCode[code]) {
+          this.peersByCode[code] = [{ id: socketId }]
+        } else if (!isUserAlreadyPaired) {
+          this.peersByCode[code].push({ id: socketId })
+        }
+
+        const peer = this.peersByCode[code].find((peer) => peer.id !== socketId)
+
+        if (peer) {
+          socket.broadcast.emit('message', event)
+        }
       })
 
       socket.on('disconnect', () => {

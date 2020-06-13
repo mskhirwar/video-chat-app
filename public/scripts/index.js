@@ -1,6 +1,6 @@
 'use strict'
 
-// let signaling
+let code
 
 const MESSAGE_TYPE = {
   SDP: 'SDP',
@@ -26,7 +26,7 @@ const createAndSendOffer = async (signaling, peerConnection) => {
   const offer = await peerConnection.createOffer()
   await peerConnection.setLocalDescription(offer)
 
-  signaling.emit('message', {
+  sendMessage(signaling, {
     message_type: MESSAGE_TYPE.SDP,
     content: offer,
   })
@@ -41,7 +41,7 @@ const createPeerConnection = (signaling) => {
 
   peerConnection.onicecandidate = (iceEvent) => {
     if (iceEvent && iceEvent.candidate) {
-      signaling.emit('message', {
+      sendMessage(signaling, {
         message_type: MESSAGE_TYPE.CANDIDATE,
         content: iceEvent.candidate,
       })
@@ -59,9 +59,17 @@ const createPeerConnection = (signaling) => {
   return peerConnection
 }
 
+const sendMessage = (signaling, message) => {
+  if (code) {
+    signaling.emit('message', {
+      ...message,
+      code,
+    })
+  }
+}
+
 const addMessageHandler = (signaling, peerConnection) => {
   signaling.on('message', async (data) => {
-
     if (!data) {
       return
     }
@@ -77,7 +85,7 @@ const addMessageHandler = (signaling, peerConnection) => {
           const answer = await peerConnection.createAnswer()
           await peerConnection.setLocalDescription(answer)
 
-          signaling.emit('message', {
+          sendMessage(signaling, {
             message_type: MESSAGE_TYPE.SDP,
             content: answer,
           })
@@ -116,8 +124,22 @@ const startChat = async () => {
   }
 }
 
+document.addEventListener('input', async (event) => {
+  if (event.target.id === 'code-input') {
+    const { value } = event.target
+
+    if (value.length > 8) {
+      document.getElementById('start-button').disabled = false
+      code = value
+    } else {
+      document.getElementById('start-button').disabled = true
+      code = null
+    }
+  }
+})
+
 document.addEventListener('click', async (event) => {
-  if (event.target.id === 'start') {
+  if (event.target.id === 'start-button' && code) {
     startChat()
   }
 })

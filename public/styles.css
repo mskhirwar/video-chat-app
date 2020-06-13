@@ -10,19 +10,41 @@ body {
   padding: 8px;
 }
 
+#start {
+  position: relative;
+  top: 40%;
+  width: 100%;
+  text-align: center;
+}
+
+input {
+  border-radius: 3px;
+  margin-bottom: 20px;
+  padding: 5px;
+  font-size: 16px;
+  text-align: center;
+}
+
 button {
   display: block;
   margin: auto;
-  position: relative;
-  top: 40%;
   padding: 10px;
   font-size: 16px;
-  background-color: #000f1c;
   border-radius: 3px;
-  color: white;
   font-weight: bold;
-  cursor: pointer;
+  color: white; 
 }
+
+button:not(:disabled) {
+  cursor: pointer;
+  background-color: #000f1c;
+}
+
+button:disabled {
+  cursor: not-allowed ;
+  background-color: #7691a8;
+}
+
 
 video {
   width: 100%;
