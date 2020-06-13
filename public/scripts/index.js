@@ -1,62 +1,123 @@
 'use strict'
 
-let socket
+// let signaling
 
-const enableAndDisableButtons = (connected) => {
-  document.getElementById('start').disabled = connected
-  document.getElementById('say-hello').disabled = !connected
-  document.getElementById('close').disabled = !connected
+const MESSAGE_TYPE = {
+  SDP: 'SDP',
+  CANDIDATE: 'CANDIDATE',
 }
 
-const addMessageToConsole = (message) => {
-  const messageDiv = document.createElement('div')
-  messageDiv.textContent = message
-  document.getElementById('console').appendChild(messageDiv)
+// TODO:
+// These Ice servers are testing purposes only
+// Need to update before pushing code to production
+const iceServers = {
+  iceServers: [
+    { urls: 'stun:stun.l.google.com:19302' },
+    { urls: 'stun:stun.services.mozilla.com' },
+  ],
 }
 
-const setupWebSocketConnection = () => {
-  // eslint-disable-next-line no-undef
-  socket = io.connect('/')
+const showChatRoom = () => {
+  document.getElementById('start').style.display = 'none'
+  document.getElementById('chat-room').style.display = 'block'
+}
 
-  socket.on('connect', () => {
-    const message = 'You are now connected!'
-    console.log(message)
-    addMessageToConsole(message)
-    enableAndDisableButtons(true)
+const createAndSendOffer = async (signaling, peerConnection) => {
+  const offer = await peerConnection.createOffer()
+  await peerConnection.setLocalDescription(offer)
+
+  signaling.emit('message', {
+    message_type: MESSAGE_TYPE.SDP,
+    content: offer,
   })
+}
 
-  socket.on('message', (data) => {
-    addMessageToConsole(`Client ${data.client} says: ${data.text}`)
+const createPeerConnection = (signaling) => {
+  const peerConnection = new RTCPeerConnection(iceServers)
+
+  peerConnection.onnegotiationneeded = async () => {
+    await createAndSendOffer(signaling, peerConnection)
+  }
+
+  peerConnection.onicecandidate = (iceEvent) => {
+    if (iceEvent && iceEvent.candidate) {
+      signaling.emit('message', {
+        message_type: MESSAGE_TYPE.CANDIDATE,
+        content: iceEvent.candidate,
+      })
+    }
+  }
+
+  peerConnection.ontrack = (event) => {
+    const video = document.getElementById('remote-view')
+
+    if (!video.srcObject) {
+      video.srcObject = event.streams[0]
+    }
+  }
+
+  return peerConnection
+}
+
+const addMessageHandler = (signaling, peerConnection) => {
+  signaling.on('message', async (data) => {
+
+    if (!data) {
+      return
+    }
+
+    const { message_type, content } = data
+
+    try {
+      if (message_type === MESSAGE_TYPE.CANDIDATE && content) {
+        await peerConnection.addIceCandidate(content)
+      } else if (message_type === MESSAGE_TYPE.SDP) {
+        if (content.type === 'offer') {
+          await peerConnection.setRemoteDescription(content)
+          const answer = await peerConnection.createAnswer()
+          await peerConnection.setLocalDescription(answer)
+
+          signaling.emit('message', {
+            message_type: MESSAGE_TYPE.SDP,
+            content: answer,
+          })
+        } else if (content.type === 'answer') {
+          await peerConnection.setRemoteDescription(content)
+        } else {
+          console.log('Unsupported SDP type.')
+        }
+      }
+    } catch (err) {
+      console.error(err)
+    }
   })
 }
 
-const closeConnection = () => {
-  socket.disconnect()
-  const message = 'You are disconnected!'
-  console.log(message)
-  addMessageToConsole(message)
-  enableAndDisableButtons(false)
+const startChat = async () => {
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({
+      audio: true,
+      video: true,
+    })
+
+    showChatRoom()
+    // eslint-disable-next-line no-undef
+    const signaling = io.connect('/')
+    const peerConnection = createPeerConnection(signaling)
+
+    addMessageHandler(signaling, peerConnection)
+
+    stream
+      .getTracks()
+      .forEach((track) => peerConnection.addTrack(track, stream))
+    document.getElementById('self-view').srcObject = stream
+  } catch (err) {
+    console.error(err)
+  }
 }
 
 document.addEventListener('click', async (event) => {
-  if (event.target.id === 'startVideoBtn') {
-    const stream = await window.navigator.mediaDevices.getUserMedia({
-      video: true,
-      audio: true,
-    })
-    const video = document.getElementById('video')
-    video.srcObject = stream
-    video.play()
-  }
-
   if (event.target.id === 'start') {
-    setupWebSocketConnection()
-  } else if (event.target.id === 'say-hello') {
-    socket.emit('message', {
-      client: socket.id,
-      text: 'Hello!',
-    })
-  } else if (event.target.id === 'close') {
-    closeConnection()
+    startChat()
   }
 })
