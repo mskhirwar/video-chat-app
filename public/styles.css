@@ -67,3 +67,36 @@ video {
   background-color: black;
   height: 95vh;
 }
+
+#view-buttons {
+  opacity: 0;
+  transition: opacity 0.5s ease-out;
+  position: absolute;
+  border-radius: 3px;
+  background-color: darkgray;
+  bottom: 10px;
+  padding: 10px;
+  left: 0;
+  right: 0;
+  margin: 20px;
+  text-align: center;
+}
+
+#view-buttons:hover {
+  opacity: 0.7;
+}
+
+.view-button {
+  background-color: darkgray;
+  border-color: darkgray;
+  border-radius: 3px;
+  font-size: 20px;
+  color: white;
+  padding: 5px;
+  border: none;
+}
+
+.view-button:hover {
+  cursor: pointer;
+  background-color: #757272;
+}

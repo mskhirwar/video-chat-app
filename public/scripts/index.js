@@ -2,10 +2,20 @@
 
 let code
 
+let displayMediaStream
+let userMediaStream
+const senders = []
+
 const MESSAGE_TYPE = {
   SDP: 'SDP',
   CANDIDATE: 'CANDIDATE',
 }
+
+// Selectors
+const $selfView = document.getElementById('self-view')
+const $shareButton = document.getElementById('share-button')
+const $stopShareButton = document.getElementById('stop-share-button')
+const $startChatButton = document.getElementById('start-button')
 
 // TODO:
 // These Ice servers are testing purposes only
@@ -103,7 +113,7 @@ const addMessageHandler = (signaling, peerConnection) => {
 
 const startChat = async () => {
   try {
-    const stream = await navigator.mediaDevices.getUserMedia({
+    userMediaStream = await navigator.mediaDevices.getUserMedia({
       audio: true,
       video: true,
     })
@@ -115,10 +125,12 @@ const startChat = async () => {
 
     addMessageHandler(signaling, peerConnection)
 
-    stream
+    userMediaStream
       .getTracks()
-      .forEach((track) => peerConnection.addTrack(track, stream))
-    document.getElementById('self-view').srcObject = stream
+      .forEach((track) =>
+        senders.push(peerConnection.addTrack(track, userMediaStream))
+      )
+    $selfView.srcObject = userMediaStream
   } catch (err) {
     console.error(err)
   }
@@ -129,10 +141,10 @@ document.addEventListener('input', async (event) => {
     const { value } = event.target
 
     if (value.length > 8) {
-      document.getElementById('start-button').disabled = false
+      $startChatButton.disabled = false
       code = value
     } else {
-      document.getElementById('start-button').disabled = true
+      $startChatButton.disabled = true
       code = null
     }
   }
@@ -142,4 +154,33 @@ document.addEventListener('click', async (event) => {
   if (event.target.id === 'start-button' && code) {
     startChat()
   }
+})
+
+$shareButton.addEventListener('click', async () => {
+  if (!displayMediaStream) {
+    displayMediaStream = await navigator.mediaDevices.getDisplayMedia()
+  }
+
+  senders
+    .find((sender) => sender.track.kind === 'video')
+    .replaceTrack(displayMediaStream.getTracks()[0])
+
+  // show what you are showing in your "self-view" video
+  $selfView.srcObject = displayMediaStream
+
+  // hide the share button and display the "stop-sharing" button
+  $shareButton.style.display = 'none'
+  $stopShareButton.style.display = 'inline'
+})
+
+$stopShareButton.addEventListener('click', async () => {
+  senders
+    .find((sender) => sender.track.kind === 'video')
+    .replaceTrack(
+      userMediaStream.getTracks().find((track) => track.kind === 'video')
+    )
+
+  $selfView.srcObject = userMediaStream
+  $shareButton.style.display = 'inline'
+  $stopShareButton.style.display = 'none'
 })
